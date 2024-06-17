@@ -26,47 +26,40 @@ localparam IDLE = 0, WAIT_FOR_KEY = 1, RECORDING = 2, DONE = 3;
 assign sample_tick = (clk_count == (50000000 / SAMPLE_RATE) - 1);
 
 // Main FSM and recording logic
-always @(posedge clk or posedge key) begin
-    if (key) begin
-        state <= WAIT_FOR_KEY;
-    end else begin
-        case (state)
-            IDLE: begin
-                ledr <= 18'b0; // Turn off all LEDs
-                sample_count <= 0;
-                clk_count <= 0;
-                recording <= 0;
-                state <= WAIT_FOR_KEY;
-            end
-            WAIT_FOR_KEY: begin
-                if (key == 0) begin
-                    recording <= 1;
-                    state <= RECORDING;
-                    ledr <= 18'b000000000000000001; // Indicate start
-                end
-            end
-            RECORDING: begin
-                if (sample_tick) begin
-                    clk_count <= 0;
-                    audio_buffer[sample_count] <= mic_in;
-                    sample_count <= sample_count + 1;
-                    ledr <= ledr + 1; // Increment LED status
-                    if (sample_count == TOTAL_SAMPLES - 1) begin
-                        recording <= 0;
-                        state <= DONE;
-                    end
-                end else begin
-                    clk_count <= clk_count + 1;
-                end
-            end
-            DONE: begin
-                ledr <= 18'b111111111111111111; // Indicate done
-                state <= IDLE;
-            end
-        endcase
-    end
+always @(posedge clk) begin
+		if (key) begin
+			if (!key) begin
+				state <= RECORDING;
+			end 
+		end else begin
+			case (state)
+				IDLE: begin
+					 ledr <= 18'b0; // Turn off all LEDs
+					 sample_count <= 0;
+					 clk_count <= 0;
+					 recording <= 0;
+					 state <= RECORDING;
+				end
+				RECORDING: begin
+					clk_count <= clk_count + 1; // Increment clk_count on every clock cycle
+					if (sample_tick) begin
+						audio_buffer[sample_count] <= mic_in;
+						ledr <= 18'b000000000000000001; // Indicate start
+						sample_count <= sample_count + 1;
+						if (sample_count == TOTAL_SAMPLES - 1) begin
+							 recording <= 0;
+							 state <= DONE;
+						end
+					end
+				end
+				DONE: begin
+					 ledr <= 18'b111111111111111111; // Indicate done
+					 state <= IDLE;
+				end
+			endcase
+	 end
 end
 
-assign audio_out = mic_in; // Pass-through for audio output for now
+//assign audio_out = audio_buffer; // Pass-through for audio output for now
 
 endmodule
