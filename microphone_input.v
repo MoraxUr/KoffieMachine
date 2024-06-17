@@ -26,9 +26,11 @@ localparam IDLE = 0, WAIT_FOR_KEY = 1, RECORDING = 2, DONE = 3;
 assign sample_tick = (clk_count == (50000000 / SAMPLE_RATE) - 1);
 
 // Main FSM and recording logic
-always @(posedge clk or posedge key) begin
-    if (key) begin
-        state <= WAIT_FOR_KEY;
+always @(posedge clk) begin
+    if (state == WAIT_FOR_KEY && !key) begin
+        state <= RECORDING;
+        recording <= 1;
+        ledr <= 18'b000000000000000001; // Indicate start
     end else begin
         case (state)
             IDLE: begin
@@ -36,7 +38,9 @@ always @(posedge clk or posedge key) begin
                 sample_count <= 0;
                 clk_count <= 0;
                 recording <= 0;
-                state <= WAIT_FOR_KEY;
+                if (key) begin
+                    state <= WAIT_FOR_KEY;
+                end
             end
             WAIT_FOR_KEY: begin
                 if (key == 0) begin
